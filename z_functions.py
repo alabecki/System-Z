@@ -118,6 +118,47 @@ def construct_worlds(propositions):
 		count +=1
 	return worlds
 
+# Assigns each rule head and rule body a set of possible worlds, namely those in which it is true
+#Since a given rule body/head will typically not include all atomic propositions found within the rule-set, directly applying  #a SAT solver on this formula will not give us the worlds we are looking for, since each world should assign truth values to  #all propositions found in the rule-set. So given a body/head x, if P is a proposition found in the set of rules but not in x, #then x will be augmented with &(P | ~P).
+def assign_extensions(formula, worlds, propositions):
+	extension = []
+	if str(formula).isspace() or len(str(formula)) == 0:			#if the formula is empty it will be treated as a toutology
+		for w in worlds.values():
+			extension.append(w.state)
+		return extension
+	else:
+		props_in_formula = set()		#store propositions found in the formula
+		for char in str(formula):
+			add = Symbol(char)
+			props_in_formula.add(add)
+		props_not_in_form = propositions.difference(props_in_formula)	#Determine which propositions are missing from the rule's body
+		supplement = Symbol('')
+		#print("formula: %s " % (formula))
+		form_cnf = to_cnf(formula)
+		for p in props_not_in_form:
+			supplement = Or(p, Not(p))							#Loop aguments (P | ~P) for each P not found in body
+			form_cnf = And(form_cnf, supplement)
+		#print("__form_cnf: %s \n" % (form_cnf))
+		form_SAT = satisfiable(form_cnf, all_models = True)  #The sympy SAT solver is applied to the augmented formula
+		form_SAT_list = list(form_SAT)				       #the ouput of satisfiable() is an itterator object so we turn it into a list
+		if(len(form_SAT_list) == 1 and form_SAT_list[0] == False):		#check to handle inconsistencies
+			extension = []
+			return extension
+		else:
+			for state in form_SAT_list:		#We now turn each state in which the body is true into a dictionary so that
+				new = {}						#they may be directly compared with each world state
+				for key, value in state.items():
+					new[key] = value
+					if new not in extension:
+						extension.append(new)
+	return extension
+
+def prepare_for_SAT(formula):
+	for char in formula:
+		char = Symbol(char)
+	symb_form = to_cnf(formula)
+	return symb_form
+
 
 def rule_conditional_formula(rule):
 	formula = "~" + rule.body + "|" + rule.head
@@ -127,19 +168,12 @@ def rule_to_conjuctive_formula(rule):
 	formula = rule.body + "&" + rule.head
 	return formula
 
-
-def check_tolerance(rule, sub_rules):
-	item = rule_to_conjuctive_formula(rule)
-	for char in item:
-		char = Symbol(char)
-	item = to_cnf(item)
+def check_tolerance(item, sub_rules):
 	expression = item
 	for sub in sub_rules.values():
 		other = rule_conditional_formula(sub)
-		for char in other: 
-			char = Symbol(char)
-		sub.item = to_cnf(other)
-		expression = And(expression, sub.item)
+		other = prepare_for_SAT(other)
+		expression = And(expression, other)
 		print(expression) 
 	if satisfiable(expression) == False:
 		print("false")
@@ -147,6 +181,55 @@ def check_tolerance(rule, sub_rules):
 	else:
 		print("true")
 		return True
+
+def get_f_Z(formula, decomposition):
+	Z = len(decomposition)
+	limit = Z - 1
+	check = {}
+	while limit >= 0:
+		key = "d" + str(limit)
+		for d in decomposition[key]:
+			check[d.name] = d
+		if check_tolerance(formula, check):
+			Z = limit
+		else:
+			return Z
+		limit -= 1 
+	return Z
+
+def entailment_0(a, b, rules):
+	first = "~" + a + "|" + b 
+	second = "~" + a + "|" + "~" + b 
+	first = prepare_for_SAT(first)
+	second = prepare_for_SAT(second)
+	expression = And(first, second)
+	for k, v in rules.items():
+		frule = rule_conditional_formula(v)
+		frule = prepare_for_SAT(frule)
+		expression = And(expression, frule)
+	expression = And(expression, Not(b))
+	print(expression)
+	if satisfiable(expression) == False:
+		return True
+	else:
+		return False
+
+
+def entailment_1(a, b, decomposition):
+	a = prepare_for_SAT(a)
+	b = prepare_for_SAT(b)
+	affirm = And(a, b)
+	deny = And(a, Not(b))
+	affirmZ = get_f_Z(affirm, decomposition)
+	denyZ = get_f_Z(deny, decomposition)
+	print("Affirm Z: %s" % (affirmZ))
+	print("Deny Z: %s" % (denyZ))
+	if affirmZ < denyZ:
+		return True
+	else:
+		return False
+
+
 
 
 

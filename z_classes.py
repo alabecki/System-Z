@@ -13,6 +13,7 @@ class Rule(object):
 													# each element of the form {A: True, B: False, .... }
 		self.weight = _weight
 		self.dominatedBy = set()
+		self.Z = -1
 
 
 class World(object):
@@ -20,7 +21,7 @@ class World(object):
 		self.name = _name							# Name of the world (w1, w2, ...)
 		self.state = _state							# The State of the world in the form of {A: True, B: False, .... }
 		self.F = set()								# The set of rules violated in the world
-		self.dom = set()							# The set of domination relations between rules in the world
+		self.Z = 0						# The set of domination relations between rules in the world
 		self.dependency = set()
 		self.weightedF = 0.0
 

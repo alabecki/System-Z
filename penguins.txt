@@ -1,8 +1,11 @@
 #
 
 (p -> b)
-(b -> f)
+(b -> f)             
 (p -> ~f)
 (p -> a)
 (b -> w)
 (f -> m)
+
+
+And(Or(Not(b), f), Or(Not(b), w), Or(Not(f), Not(p)), Or(Not(p), a), Or(Not(p), b),

@@ -17,9 +17,6 @@ import re
 from z_classes import*
 
 
-
-
-
 def get_file():
 	while True:
 		file_name = input("Please input the name of a text-file containing a set of rules \n")
@@ -93,6 +90,27 @@ def construct_rules_dict(file):
 		rules.update({name: new})
 		count += 1
 	return rules
+
+def add_rule(rule, rules):
+	rule = rule.strip()
+	rule = re.sub(r'\s+', '', rule)
+	step = (re.split("->|\$", rule))
+	#print("Step 0 %s " % (step[0]))
+	#print("Step 1 %s " % (step[1]))
+	step[0] = step[0][1:]
+	step[1] = step[1][:-1]
+	count = len(rules)
+	name = "r" + str(count)
+	if len(step) == 1:
+		item = " " + " -> " + step[0]
+		new = Rule(name, item, " " , step[0])
+	if len(step) == 2:
+		item = step[0] + " -> " + step[1]
+		new = Rule(name, item, step[0], step[1])
+	if len(step) == 3:
+		item = step[0] + " -> " + step[1] +  " $ " + step[2]
+		new = Rule(name, item, step[0], step[1], float(step[2]))
+	rules.update({name: new})
 
 
 def construct_worlds(propositions):
@@ -174,27 +192,66 @@ def check_tolerance(item, sub_rules):
 		other = rule_conditional_formula(sub)
 		other = prepare_for_SAT(other)
 		expression = And(expression, other)
-		print(expression) 
+		#print(expression) 
 	if satisfiable(expression) == False:
-		print("false")
+		##print("false")
 		return False
 	else:
 		print("true")
 		return True
 
+def z_partition(rules):
+	decomposition = dict()
+	count = 0
+	remaining_rules = deepcopy(rules)
+	remaining_shadow = deepcopy(rules)
+	num_rules = len(rules.keys())
+	trials = 0
+	while len(remaining_rules.keys()) > 0 and count <= num_rules:
+		#print("Len rules: %s" % (len(remaining_rules.keys())))
+		print("Remaining rules:")
+		for k, v in remaining_rules.items():
+			print(k, v.item)
+		temp = []
+		##for r in remaining_rules.keys():
+		#	print(r, end=" ")
+		for r, rule in remaining_rules.items():
+			comp = deepcopy(remaining_rules)
+			del comp[r]
+			item = deepcopy(rule)
+			item = rule_to_conjuctive_formula(item)
+			item = prepare_for_SAT(item)
+			if check_tolerance(item, comp) == True:
+				temp.append(rule)
+				#print("Count: %s" % (count))
+				#print("rule: %s" % (rule.item))
+				rules[r].Z = count 
+				#print("rule z: %s" % (rule.Z))
+				#for t in temp:
+				#	print( t.item)
+				del remaining_shadow[r]
+		name = "d" + str(count)
+		decomposition[name] = temp
+		remaining_rules = deepcopy(remaining_shadow)
+		if len(remaining_rules.keys()) == 0:
+			break
+		#print("Current len remaining rules: %s" % (len(remaining_rules.keys())))
+		count += 1
+	return decomposition
+
 def get_f_Z(formula, decomposition):
-	Z = len(decomposition)
-	limit = Z - 1
+	Z = len(decomposition) -1
+	#limit = Z 
 	check = {}
-	while limit >= 0:
-		key = "d" + str(limit)
+	while Z >= 0:
+		key = "d" + str(Z)
 		for d in decomposition[key]:
 			check[d.name] = d
 		if check_tolerance(formula, check):
-			Z = limit
+			Z -= 1
 		else:
 			return Z
-		limit -= 1 
+		#limit -= 1 
 	return Z
 
 def entailment_0(a, b, rules):
@@ -213,6 +270,29 @@ def entailment_0(a, b, rules):
 		return True
 	else:
 		return False
+
+def entailment_0Z(a, b, rules):
+	KB = deepcopy(rules)
+	new = "(" + a + "->" + "~" + b + ")"
+	add_rule(new, KB)
+	decomp = z_partition(KB)
+	old = set(KB.values())
+	new = set()
+	for k, v in decomp.items():
+		for i in v:
+			new.add(i)
+	print("Old:")
+	for o in old:
+		print(o.name)
+	print("New:")
+	for n in new:
+		print(n.name) 
+	if len(old) == len(new):
+		print("Return False")
+		return False
+	else:
+		print("Return True")
+		return True
 
 
 def entailment_1(a, b, decomposition):

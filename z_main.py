@@ -21,10 +21,22 @@ from z_functions import*
 from z_classes import*
 
 
+options = {
+	"1": "Print the z-ranking of R",
+	"2": "Print the z-ranking of each world w",
+	"3": "Find the z-ranking for a given formula f",
+	"4": "Check if 'a |- b' obtains by p-entailment",
+	"5": "Check if 'a |- b' obtains by z-entailment",
+	"6": "Retuen to previous..."
+}
+
 
 while(True):
 	do = ""
-	print("What would you like to do? \n")
+	print("____________________________________________________________________")
+	print("What would you like to do? ")
+	print("____________________________________________________________________")
+
 	while(do != "1" and do !="2"):
 		do = input("1: Open a file, 2: Exit program\n")
 		if(do == "2"):
@@ -49,37 +61,8 @@ while(True):
 
 
 	# Get Z-partition of Rules
-	decomposition = dict()
-	count = 0
-	remaining_rules = deepcopy(rules)
-	remaining_shadow = deepcopy(rules)
 
-	while len(remaining_rules.keys()) > 0:
-		print("Len rules: %s" % (len(remaining_rules.keys())))
-		print("Remaining rules:")
-		temp = []
-		for r in remaining_rules.keys():
-			print(r, end=" ")
-		for r, rule in remaining_rules.items():
-			comp = deepcopy(remaining_rules)
-			del comp[r]
-			item = deepcopy(rule)
-			item = rule_to_conjuctive_formula(item)
-			item = prepare_for_SAT(item)
-			if check_tolerance(item, comp) == True:
-				temp.append(rule)
-				print("Count: %s" % (count))
-				print("rule: %s" % (rule.item))
-				rules[r].Z = count 
-				print("rule z: %s" % (rule.Z))
-				#for t in temp:
-				#	print( t.item)
-				del remaining_shadow[r]
-		name = "d" + str(count)
-		decomposition[name] = temp
-		remaining_rules = deepcopy(remaining_shadow)
-		print("Current len remaining rules: %s" % (len(remaining_rules.keys())))
-		count += 1
+	decomposition = z_partition(rules)
 
 	for d, v in decomposition.items():
 		print (d)
@@ -95,36 +78,93 @@ while(True):
 	
 
 	for w, world in worlds.items():
-		highest = 0
+		highest = -1
 		for r, rule in rules.items():
-			if(world.state in rule.bodyExtension and world.state not in rule.headExtension) and (rule.Z + 1) > highest:
+			if(world.state in rule.bodyExtension and world.state not in rule.headExtension) and (rule.Z) > highest:
 				highest = rule.Z
 		world.Z = highest +1 
 
-	#for w, world in worlds.items():
-	#	print(world.state, world.Z)
+	for w, world in worlds.items():
+		print(world.state, world.Z)
 
-	#get Z value of a formula
 
-	#print("Please enter a formula to check: \n")
-	#form = input()
-	#form_Z = get_f_Z(form, decomposition)
-	#print(form_Z)
-	print("You can now check if some 'a' 0- entails some 'b'\n")
-	a = input("Please type in the 'a' formula ")
-	b = input("Please type in the 'b' formula ")
-	res = entailment_0(a, b, rules)
-	if res == True:
-		print("%s entails %s " % (a, b))
-	else:
-		print("%s does not entail %s" % (a, b))
+	while True:
+		opt = " "
+		print("\n")
+		print("____________________________________________________________________")
+		while opt not in options.keys():
+			print("What would you like to do?\n")
+			for k, v in options.items():
+				print("%s: %s" % (k, v))
+			print("____________________________________________________________________")
+			print("\n")
+			opt = input()
 
-	print("You can now check if some 'a' 1-entails some 'b' \n")
-	a = input("Please type in the 'a' formula ")
-	b = input("Please type in the 'b' formula ")
-	res = entailment_1(a, b, decomposition)
-	if res == True:
-		print("%s entails %s " % (a, b))
-	else:
-		print("%s does not entail %s" % (a, b))
+		if opt == "1": 
+			print("Rules accoding to Z-rank:")
+			print("____________________________________________________________________")
+			sorted_rules = sorted(rules.values(), key = lambda x: x.Z)
+			for rule in sorted_rules:
+				print("%s: %s, %s " % (rule.name, rule.item, rule.Z))
+			print("____________________________________________________________________")
 
+		if opt == "2":
+			print("Worlds sorted by Z-rank:")
+			print("____________________________________________________________________")
+			sorted_worlds = sorted(worlds.values(), key =lambda x: x.Z)
+			for world in sorted_worlds:
+				print("%s: %s, %s " % (world.name, world.state, world.Z))
+			print("____________________________________________________________________")
+
+		if opt == "3":
+			z_rank = -1
+			while True:
+				try:
+					form = input("Please input a well-formed fomula using '&', '|' and '~' as oprators: \n")
+					_form = prepare_for_SAT(form)
+					z_rank = get_f_Z(_form, decomposition)
+					break
+				except ValueError:
+					print ("That was not a well-formed formula, please try again...")
+			z_rank = get_f_Z(_form, decomposition)
+			print("____________________________________________________________________")
+			print("The Z-rank of %s is %s" % (form, z_rank))
+			print("____________________________________________________________________")
+
+
+		if opt == "4":
+			a = input("Please type in the 'a' formula \n")
+			b = input("Please type in the 'b' formula \n")
+			#res = entailment_0(a, b, rules)
+			res = entailment_0Z(a, b, rules)
+			print("\n")
+			if res == True:
+				print("____________________________________________________________________")
+				print("%s entails %s " % (a, b))
+				print("____________________________________________________________________")
+
+			else:
+				print("____________________________________________________________________")
+				print("%s does not p-entail %s" % (a, b))
+				print("____________________________________________________________________")
+
+
+		if opt == "5":
+			a = input("Please type in the 'a' formula \n")
+			b = input("Please type in the 'b' formula \n")
+			res = entailment_1(a, b, decomposition)
+			print("\n")
+			if res == True:
+				print("____________________________________________________________________")
+				print("%s entails %s " % (a, b))
+				print("____________________________________________________________________")
+
+			else:
+				print("____________________________________________________________________")
+				print("%s does not z-entail %s" % (a, b))
+				print("____________________________________________________________________")
+
+
+		if opt == "6":
+			print("....\n")
+			break

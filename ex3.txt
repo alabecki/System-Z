@@ -1,0 +1,5 @@
+(p & q -> FALSE)
+(TRUE -> p | q)
+(p -> ~f)
+(p -> b)
+(b -> f)

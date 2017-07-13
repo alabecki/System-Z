@@ -39,6 +39,8 @@ def obtain_atomic_formulas(file):
 		_line = _line.split("$")
 		_line = _line[0]
 		if _line.startswith("(") or _line.startswith("!"):
+			_line = _line.replace("FALSE", "")
+			_line = _line.replace("TRUE", "")
 			_line = _line.replace("~", "")
 			_line = _line.replace("&", ",")
 			_line = _line.replace("|", ",")
@@ -140,9 +142,11 @@ def construct_worlds(propositions):
 #Since a given rule body/head will typically not include all atomic propositions found within the rule-set, directly applying  #a SAT solver on this formula will not give us the worlds we are looking for, since each world should assign truth values to  #all propositions found in the rule-set. So given a body/head x, if P is a proposition found in the set of rules but not in x, #then x will be augmented with &(P | ~P).
 def assign_extensions(formula, worlds, propositions):
 	extension = []
-	if str(formula).isspace() or len(str(formula)) == 0:			#if the formula is empty it will be treated as a toutology
+	if str(formula).isspace() or len(str(formula)) == 0 or str(formula) == "TRUE":			#if the formula is empty it will be treated as a toutology
 		for w in worlds.values():
 			extension.append(w.state)
+		return extension
+	if str(formula) == "FALSE":
 		return extension
 	else:
 		props_in_formula = set()		#store propositions found in the formula
@@ -179,10 +183,22 @@ def prepare_for_SAT(formula):
 
 
 def rule_conditional_formula(rule):
+	if rule.head == "FALSE":
+		formula = "~(" + rule.body + ")"
+		return formula
+	if rule.body == "TRUE":
+		formula = rule.head
+		return formula
 	formula = "~" + rule.body + "|" + rule.head
 	return formula
 
 def rule_to_conjuctive_formula(rule):
+	if rule.head == "FALSE":
+		formula = "~(" + rule.body + ")"
+		return formula
+	if rule.body == "TRUE":
+		formula = rule.head
+		return formula
 	formula = rule.body + "&" + rule.head
 	return formula
 
@@ -192,7 +208,7 @@ def check_tolerance(item, sub_rules):
 		other = rule_conditional_formula(sub)
 		other = prepare_for_SAT(other)
 		expression = And(expression, other)
-		#print(expression) 
+		print(expression) 
 	if satisfiable(expression) == False:
 		##print("false")
 		return False
@@ -242,17 +258,25 @@ def z_partition(rules):
 def get_f_Z(formula, decomposition):
 	Z = len(decomposition) -1
 	#limit = Z 
+	flag = False
 	check = {}
 	while Z >= 0:
 		key = "d" + str(Z)
+		print("Key is %s" % (key))
 		for d in decomposition[key]:
 			check[d.name] = d
 		if check_tolerance(formula, check):
 			Z -= 1
+			flag = True
 		else:
-			return Z
+			if flag == False:
+				return "infinity"
+			else:
+				return Z + 1
 		#limit -= 1 
-	return Z
+	if flag == False:
+		return "infinity"
+	return Z + 1
 
 def entailment_0(a, b, rules):
 	first = "~" + a + "|" + b 

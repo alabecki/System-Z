@@ -22,12 +22,12 @@ from z_classes import*
 
 
 options = {
-	"1": "Print the z-ranking of R",
+	"1": "Print the z-rankings of R",
 	"2": "Print the z-ranking of each world w",
 	"3": "Find the z-ranking for a given formula f",
 	"4": "Check if 'a |- b' obtains by p-entailment",
 	"5": "Check if 'a |- b' obtains by z-entailment",
-	"6": "Retuen to previous..."
+	"6": "Return to previous..."
 }
 
 
@@ -55,7 +55,7 @@ while(True):
 	file.seek(0)
 	#rules = {}
 	rules = construct_rules_dict(file)		# parses input text, make a Rule object for each rule, saves objects in dictionary
-	file.seek(0)
+	file.close()
 
 	worlds = construct_worlds(propositions)  #creates a dictionary of worlds
 
@@ -78,11 +78,16 @@ while(True):
 	
 
 	for w, world in worlds.items():
+		flag = False
 		highest = -1
 		for r, rule in rules.items():
 			if(world.state in rule.bodyExtension and world.state not in rule.headExtension) and (rule.Z) > highest:
 				highest = rule.Z
-		world.Z = highest +1 
+				flag = True
+		if flag == False:
+			world.z = 100000
+		else:
+			world.Z = highest +1 
 
 	for w, world in worlds.items():
 		print(world.state, world.Z)

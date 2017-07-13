@@ -13,7 +13,7 @@ class Rule(object):
 													# each element of the form {A: True, B: False, .... }
 		self.weight = _weight
 		self.dominatedBy = set()
-		self.Z = -1
+		self.Z = 1000
 
 
 class World(object):

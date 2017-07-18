@@ -32,21 +32,11 @@ options = {
 
 
 while(True):
-	do = ""
-	print("____________________________________________________________________")
-	print("What would you like to do? ")
-	print("____________________________________________________________________")
 
-	while(do != "1" and do !="2"):
-		do = input("1: Open a file, 2: Exit program\n")
-		if(do == "2"):
-			sys.exit()
-		if(do == "1"):
-			res = get_file()
-			file = res[0]
-			file_name = res[1]
-		else:
-			print("I'm sorry, could you repeat your command? \n")
+	res = base()
+
+	file = res[0]
+	file_name = res[1]
 
 	file.seek(0)
 	propositions = obtain_atomic_formulas(file)
@@ -64,17 +54,17 @@ while(True):
 
 	decomposition = z_partition(rules)
 
-	for d, v in decomposition.items():
-		print (d)
-		for r in v:
-			print (r.item)
+	#for d, v in decomposition.items():
+	#	print (d)
+	#	for r in v:
+	#		print (r.item)
 
 	for k, rule in rules.items():
 		rule.bodyExtension = assign_extensions(rule.body, worlds, propositions)		#obtains extension of bodies of rules
 		rule.headExtension = assign_extensions(rule.head, worlds, propositions)		#obtains extensions of heads of rules
 
-	for r, rule in rules.items():
-		print(rule.item, rule.Z)
+	#for r, rule in rules.items():
+	#	print(rule.item, rule.Z)
 	
 
 	for w, world in worlds.items():
@@ -89,8 +79,8 @@ while(True):
 		else:
 			world.Z = highest +1 
 
-	for w, world in worlds.items():
-		print(world.state, world.Z)
+	#for w, world in worlds.items():
+	#	print(world.state, world.Z)
 
 
 	while True:
@@ -145,7 +135,7 @@ while(True):
 			print("\n")
 			if res == True:
 				print("____________________________________________________________________")
-				print("%s entails %s " % (a, b))
+				print("%s p-entails %s " % (a, b))
 				print("____________________________________________________________________")
 
 			else:
@@ -161,7 +151,7 @@ while(True):
 			print("\n")
 			if res == True:
 				print("____________________________________________________________________")
-				print("%s entails %s " % (a, b))
+				print("%s z-entails %s " % (a, b))
 				print("____________________________________________________________________")
 
 			else:

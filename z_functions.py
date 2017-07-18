@@ -17,18 +17,48 @@ import re
 from z_classes import*
 
 
-def get_file():
+def base():
+	do = ""
+	res = []
+	while len(res) == 0:
+		print("\n")
+		print("What would you like to do? \n")
+		do = input("1: Open a file, 2: Exit program\n")
+		if(do == "2"):
+			sys.exit()
+		if(do == "1"):
+			print("Please input the name of a text-file containing a set of rules ")
+			print("(or press 'r' to return) \n")
+			name = input()
+			if name != "r":
+				res = get_file(name)
+				if res == []:
+					continue
+				#print(type(res))
+				return res
+
+		else:
+			print("I'm sorry, could you repeat your command? \n")
+	return res
+
+
+def get_file(name):
 	while True:
-		file_name = input("Please input the name of a text-file containing a set of rules \n")
-		file_name = file_name + ".txt"
-		if(os.path.exists(file_name)):
-			_file = open(file_name, "r+")
-			print("Name of file: %s \n" % (file_name))
-			res = [_file, file_name]
+		if name.endswith(".txt") == False:
+			name = name + ".txt"
+		if(os.path.exists(name)):
+			_file = open(name, "r+")
+			print("\n")
+			print("Name of file: %s " % (name))
+			res = [_file, name]
 			return res
 		else:
-			print("The file you selected does not exist, please try again\n")
-            #filename = input("Select the first/second/third file:")
+			print("The file you selected does not exist, please try again")
+			print("(Or press 'r' to return) \n ")
+			name = input()
+			if name == 'r':
+				res = []
+				return res
 
 # Scans the rule file for atomic formulas (letters). This is needed to construct the worlds
 def obtain_atomic_formulas(file):
@@ -189,7 +219,7 @@ def rule_conditional_formula(rule):
 	if rule.body == "TRUE":
 		formula = rule.head
 		return formula
-	formula = "~" + rule.body + "|" + rule.head
+	formula = "~(" + rule.body + ")|" + rule.head
 	return formula
 
 def rule_to_conjuctive_formula(rule):
@@ -206,14 +236,15 @@ def check_tolerance(item, sub_rules):
 	expression = item
 	for sub in sub_rules.values():
 		other = rule_conditional_formula(sub)
+		#print("other before: %s" % (other))
 		other = prepare_for_SAT(other)
+		#print ("Other after: %s" % (other))
 		expression = And(expression, other)
-		print(expression) 
+	#print(expression) 
 	if satisfiable(expression) == False:
 		##print("false")
 		return False
 	else:
-		print("true")
 		return True
 
 def z_partition(rules):
@@ -224,14 +255,15 @@ def z_partition(rules):
 	num_rules = len(rules.keys())
 	trials = 0
 	while len(remaining_rules.keys()) > 0 and count <= num_rules:
-		#print("Len rules: %s" % (len(remaining_rules.keys())))
-		print("Remaining rules:")
-		for k, v in remaining_rules.items():
-			print(k, v.item)
+		##print("Len rules: %s" % (len(remaining_rules.keys())))
+		#print("Remaining rules:")
+		#for k, v in remaining_rules.items():
+		#	print(k, v.item)
 		temp = []
-		##for r in remaining_rules.keys():
+		#for r in remaining_rules.keys():
 		#	print(r, end=" ")
 		for r, rule in remaining_rules.items():
+		#	print("Current rule: %s" % (rule.item))
 			comp = deepcopy(remaining_rules)
 			del comp[r]
 			item = deepcopy(rule)
@@ -239,12 +271,12 @@ def z_partition(rules):
 			item = prepare_for_SAT(item)
 			if check_tolerance(item, comp) == True:
 				temp.append(rule)
-				#print("Count: %s" % (count))
-				#print("rule: %s" % (rule.item))
+			#	print("Count: %s" % (count))
+			#	print("rule: %s" % (rule.item))
 				rules[r].Z = count 
-				#print("rule z: %s" % (rule.Z))
-				#for t in temp:
-				#	print( t.item)
+			#	print("rule z: %s" % (rule.Z))
+			#	for t in temp:
+			#		print( t.item)
 				del remaining_shadow[r]
 		name = "d" + str(count)
 		decomposition[name] = temp
@@ -253,29 +285,36 @@ def z_partition(rules):
 			break
 		#print("Current len remaining rules: %s" % (len(remaining_rules.keys())))
 		count += 1
+	if len(remaining_rules.keys()) > 0 :
+		decomposition = dict()
 	return decomposition
 
 def get_f_Z(formula, decomposition):
 	Z = len(decomposition) -1
+	if len(decomposition.keys()) == 0:
+		return 10000
 	#limit = Z 
 	flag = False
 	check = {}
 	while Z >= 0:
 		key = "d" + str(Z)
-		print("Key is %s" % (key))
-		for d in decomposition[key]:
+		#print("Key is %s" % (key))
+		temp = decomposition[key]
+		for d in temp:
 			check[d.name] = d
+		#for k, v in check.items():
+		#	print(k, v.item)
 		if check_tolerance(formula, check):
 			Z -= 1
 			flag = True
 		else:
 			if flag == False:
-				return "infinity"
+				return 10000
 			else:
 				return Z + 1
 		#limit -= 1 
 	if flag == False:
-		return "infinity"
+		return 10000
 	return Z + 1
 
 def entailment_0(a, b, rules):
@@ -289,7 +328,7 @@ def entailment_0(a, b, rules):
 		frule = prepare_for_SAT(frule)
 		expression = And(expression, frule)
 	expression = And(expression, Not(b))
-	print(expression)
+	#print(expression)
 	if satisfiable(expression) == False:
 		return True
 	else:
@@ -298,25 +337,17 @@ def entailment_0(a, b, rules):
 def entailment_0Z(a, b, rules):
 	KB = deepcopy(rules)
 	new = "(" + a + "->" + "~" + b + ")"
+	#print("new: %s" % (new))
 	add_rule(new, KB)
+	#print("KB:")
+	#for k, v in KB.items():
+	#	print(k, v.item)
 	decomp = z_partition(KB)
-	old = set(KB.values())
-	new = set()
-	for k, v in decomp.items():
-		for i in v:
-			new.add(i)
-	print("Old:")
-	for o in old:
-		print(o.name)
-	print("New:")
-	for n in new:
-		print(n.name) 
-	if len(old) == len(new):
-		print("Return False")
-		return False
-	else:
-		print("Return True")
+	if len(decomp.keys()) == 0:
 		return True
+	else:
+		return False
+	
 
 
 def entailment_1(a, b, decomposition):
@@ -326,8 +357,8 @@ def entailment_1(a, b, decomposition):
 	deny = And(a, Not(b))
 	affirmZ = get_f_Z(affirm, decomposition)
 	denyZ = get_f_Z(deny, decomposition)
-	print("Affirm Z: %s" % (affirmZ))
-	print("Deny Z: %s" % (denyZ))
+	#print("Affirm Z: %s" % (affirmZ))
+	#print("Deny Z: %s" % (denyZ))
 	if affirmZ < denyZ:
 		return True
 	else:

@@ -67,10 +67,7 @@ exceptional, or unusual than beta. (Inconsistent formulas are the most
 induce a partitionof R (when R is consistent) and is used to determine the
 z-entailment of any formulas
 a, b supplied by the user.
-
-The program can also check for the weaker p-entailment relation between two
-given formulas. a p-entails b if adding the rule (a -> ~b) makes R inconsistent
-(so it cannot be fully partitioned into a z-ranking).  
+  
 _________________________________________________________________________
 
 2. Rulesets 
@@ -137,19 +134,17 @@ be presented:
 	1: Print the z-rankings of R
 	2: Print the z-ranking of each world w
 	3: Find the z-ranking for a given formula f
-	4: Check if 'a |- b' obtains by p-entailment
-	5: Check if 'a |- b' obtains by z-entailment
-	6: Return to previous...
+	4: Check if 'a |- b' obtains by z-entailment
+	5: Return to previous...
  
 
 The commands are generally self-explanatory. 
 
 The first gives the z-rank of each rule in R and the second does the same for 
 each possible world. The third command will prompt the user to enter a formula and 
-will return its z-rank with respect to R. The fourth and fifth commands each prompt
-the user to input two formulas in sequence and tell the user whether the first 
-p-entails/z-entails the second.
-Finally, the sixth option takes the use back to the start, where a new file may be 
+will return its z-rank with respect to R. The fourth command promptsthe user to 
+input two formulas in sequence and tell the user whether the first z-entails the second.
+Finally, the fifth option takes the use back to the start, where a new file may be 
 opened or the user may exit the program.
 
 

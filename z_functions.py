@@ -118,6 +118,8 @@ def construct_rules_dict(file):
 			new = Rule(name, item, line[0], line[1])
 		if len(line) == 3:
 			item = line[0] + " -> " + line[1] +  " $ " + line[2]
+			if negated == True:
+				item = "~" + item
 			new = Rule(name, item, line[0], line[1], float(line[2]))
 		rules.update({name: new})
 		count += 1
@@ -144,6 +146,41 @@ def add_rule(rule, rules):
 		new = Rule(name, item, step[0], step[1], float(step[2]))
 	rules.update({name: new})
 
+def add_constraints(file):
+	lines = []
+	for line in file:
+		line.strip()
+		line = re.sub(r'\s+', '', line)
+		if line.startswith("!"):
+			lines.append(line.strip())
+		#for line in lines:
+	temp1 = [line[1:] for line in lines]		#remove "!(" at the beginning of the rule
+	#temp2 = [line[:-1] for line in temp1]		#remove the ")" at the end of the rule
+	constraints = {}
+	count = 0
+	for line in temp1:
+		name = "c" + str(count)
+		new = Constraint(name, line)
+		constraints.update({name: new})
+		count += 1
+	return constraints
+
+def reconstruct_worlds(propositions, constraints):
+	_worlds2 = construct_worlds(propositions)
+	for k, constraint in constraints.items():
+		constraint.extension = assign_extensions(constraint.item, _worlds2, propositions)
+	worlds2 = {}
+	flag = True
+	for w, world in _worlds2.items():
+		flag = True
+		for constraint in constraints.values():
+		#	print("World: %s, constraint %s \n" % (world.state, constraint.item))
+			if world.state not in constraint.extension:
+				flag = False
+		if flag == True:
+			worlds2[w] = world
+	return worlds2
+
 
 def construct_worlds(propositions):
 	_op = []
@@ -167,6 +204,7 @@ def construct_worlds(propositions):
 		worlds[name] = new								#the new world is added to the list of worlds
 		count +=1
 	return worlds
+
 
 # Assigns each rule head and rule body a set of possible worlds, namely those in which it is true
 #Since a given rule body/head will typically not include all atomic propositions found within the rule-set, directly applying  #a SAT solver on this formula will not give us the worlds we are looking for, since each world should assign truth values to  #all propositions found in the rule-set. So given a body/head x, if P is a proposition found in the set of rules but not in x, #then x will be augmented with &(P | ~P).
@@ -213,41 +251,67 @@ def prepare_for_SAT(formula):
 
 
 def rule_conditional_formula(rule):
+	print("Body: %s" % (rule.body))
+	print("Head: %s" % (rule.head))
 	if rule.head == "FALSE":
 		formula = "~(" + rule.body + ")"
+		return formula
+	if rule.head == "~(FALSE)":
+		formula = rule.body
+		print(formula)
 		return formula
 	if rule.body == "TRUE":
 		formula = rule.head
 		return formula
-	formula = "~(" + rule.body + ")|" + rule.head
+	if rule.body == "~(TRUE)":
+		formula = "~(" + rule.head + ")"
+		return formula 
+
+	formula = "~(" + rule.body + ")|(" + rule.head + ")"
 	return formula
 
 def rule_to_conjuctive_formula(rule):
+	print("Body: %s" % (rule.body))
+	print("Head: %s" % (rule.head))
 	if rule.head == "FALSE":
 		formula = "~(" + rule.body + ")"
+		return formula 
+	if rule.head == "~(FALSE)":
+		formula = rule.body
+		print(formula)
 		return formula
 	if rule.body == "TRUE":
 		formula = rule.head
 		return formula
-	formula = rule.body + "&" + rule.head
+	if rule.body == "~(TRUE)":
+		formula = "~(" + rule.head + ")"
+		return formula 
+	formula = "(" + rule.body + ")&(" + rule.head + ")"
 	return formula
 
-def check_tolerance(item, sub_rules):
+def check_tolerance(item, sub_rules, constraints):
 	expression = item
+	print(expression)
 	for sub in sub_rules.values():
+		print("Other: %s" % (sub.item))
 		other = rule_conditional_formula(sub)
-		#print("other before: %s" % (other))
+		print("other before: %s" % (other))
 		other = prepare_for_SAT(other)
-		#print ("Other after: %s" % (other))
+		print ("Other after: %s" % (other))
 		expression = And(expression, other)
-	#print(expression) 
-	if satisfiable(expression) == False:
-		##print("false")
-		return False
-	else:
+	for c in constraints.values():
+		restriction = prepare_for_SAT(c.item)
+		print(restriction)
+		expression = And(expression, restriction)
+	print("expression: %s" % (expression))
+	if satisfiable(expression):
+		print("true")
 		return True
+	else:
+		print("false")
+		return False
 
-def z_partition(rules):
+def z_partition(rules,constraints):
 	decomposition = dict()
 	count = 0
 	remaining_rules = deepcopy(rules)
@@ -255,41 +319,43 @@ def z_partition(rules):
 	num_rules = len(rules.keys())
 	trials = 0
 	while len(remaining_rules.keys()) > 0 and count <= num_rules:
-		##print("Len rules: %s" % (len(remaining_rules.keys())))
-		#print("Remaining rules:")
-		#for k, v in remaining_rules.items():
-		#	print(k, v.item)
+		print("Len rules: %s" % (len(remaining_rules.keys())))
+		print("Remaining rules:")
+		for k, v in remaining_rules.items():
+			print(k, v.item)
 		temp = []
-		#for r in remaining_rules.keys():
-		#	print(r, end=" ")
+		for r in remaining_rules.keys():
+			print(r, end=" ")
 		for r, rule in remaining_rules.items():
-		#	print("Current rule: %s" % (rule.item))
+			print("Current rule: %s" % (rule.item))
 			comp = deepcopy(remaining_rules)
 			del comp[r]
 			item = deepcopy(rule)
 			item = rule_to_conjuctive_formula(item)
+			print(item)
 			item = prepare_for_SAT(item)
-			if check_tolerance(item, comp) == True:
+			print(item)
+			if check_tolerance(item, comp, constraints) == True:
 				temp.append(rule)
-			#	print("Count: %s" % (count))
-			#	print("rule: %s" % (rule.item))
+				print("Count: %s" % (count))
+				print("rule: %s" % (rule.item))
 				rules[r].Z = count 
-			#	print("rule z: %s" % (rule.Z))
-			#	for t in temp:
-			#		print( t.item)
+				print("rule z: %s" % (rules[r].Z))
+				for t in temp:
+					print( t.item)
 				del remaining_shadow[r]
 		name = "d" + str(count)
 		decomposition[name] = temp
 		remaining_rules = deepcopy(remaining_shadow)
 		if len(remaining_rules.keys()) == 0:
 			break
-		#print("Current len remaining rules: %s" % (len(remaining_rules.keys())))
+		print("Current len remaining rules: %s" % (len(remaining_rules.keys())))
 		count += 1
 	if len(remaining_rules.keys()) > 0 :
 		decomposition = dict()
 	return decomposition
 
-def get_f_Z(formula, decomposition):
+def get_f_Z(formula, decomposition, constraints):
 	Z = len(decomposition) -1
 	if len(decomposition.keys()) == 0:
 		return 10000
@@ -304,7 +370,7 @@ def get_f_Z(formula, decomposition):
 			check[d.name] = d
 		#for k, v in check.items():
 		#	print(k, v.item)
-		if check_tolerance(formula, check):
+		if check_tolerance(formula, check, constraints):
 			Z -= 1
 			flag = True
 		else:
@@ -317,7 +383,7 @@ def get_f_Z(formula, decomposition):
 		return 10000
 	return Z + 1
 
-def entailment_0(a, b, rules):
+def entailment_0(a, b, rules, constraints):
 	first = "~" + a + "|" + b 
 	second = "~" + a + "|" + "~" + b 
 	first = prepare_for_SAT(first)
@@ -327,22 +393,25 @@ def entailment_0(a, b, rules):
 		frule = rule_conditional_formula(v)
 		frule = prepare_for_SAT(frule)
 		expression = And(expression, frule)
+	for k, v in constraints.items():
+		restriction = prepare_for_SAT(v.item)
+		expression = And(expression, restriction)
 	expression = And(expression, Not(b))
-	#print(expression)
+	print(expression)
 	if satisfiable(expression) == False:
 		return True
 	else:
 		return False
 
-def entailment_0Z(a, b, rules):
+def entailment_0Z(a, b, rules, constraints):			#Need to limit consideration to worlds under consideration
 	KB = deepcopy(rules)
-	new = "(" + a + "->" + "~" + b + ")"
-	#print("new: %s" % (new))
+	new = "(" + a + "->" + "~(" + b + ") )"
+	print("new: %s" % (new))
 	add_rule(new, KB)
-	#print("KB:")
-	#for k, v in KB.items():
-	#	print(k, v.item)
-	decomp = z_partition(KB)
+	print("KB:")
+	for k, v in KB.items():
+		print(k, v.item)
+	decomp = z_partition(KB, constraints)
 	if len(decomp.keys()) == 0:
 		return True
 	else:
@@ -350,13 +419,13 @@ def entailment_0Z(a, b, rules):
 	
 
 
-def entailment_1(a, b, decomposition):
+def entailment_1(a, b, decomposition, constraints):
 	a = prepare_for_SAT(a)
 	b = prepare_for_SAT(b)
 	affirm = And(a, b)
 	deny = And(a, Not(b))
-	affirmZ = get_f_Z(affirm, decomposition)
-	denyZ = get_f_Z(deny, decomposition)
+	affirmZ = get_f_Z(affirm, decomposition, constraints)
+	denyZ = get_f_Z(deny, decomposition, constraints)
 	#print("Affirm Z: %s" % (affirmZ))
 	#print("Deny Z: %s" % (denyZ))
 	if affirmZ < denyZ:

@@ -1,6 +1,18 @@
 #/usr/bin/python3
 
 # System Z Solver ___________________________________________________________________________________________________________
+# Author: Adam Labecki (2017)
+# This program, is free software. Permission is hereby granted, free of charge, to any person obtaining a 
+# copy of this software and associated documentation files (the "Software"), to deal in the Software 
+#without restriction, including without limitation the rights to use, copy, modify, merge, publish, 
+#distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software 
+#is furnished to do so, subject to the following conditions:
+
+#The above copyright notice and this permission notice shall be included in all copies or substantial 
+#portions of the Software.
+
+# For further details see LICENSE 
+
 
  #Libraries______________________________________________________________________________________________________________________
 from sympy import Symbol
@@ -25,9 +37,8 @@ options = {
 	"1": "Print the z-rankings of R",
 	"2": "Print the z-ranking of each world w",
 	"3": "Find the z-ranking for a given formula f",
-	"4": "Check if 'a |- b' obtains by p-entailment",
-	"5": "Check if 'a |- b' obtains by z-entailment",
-	"6": "Return to previous..."
+	"4": "Check if 'a |- b' obtains by z-entailment",
+	"5": "Return to previous..."
 }
 
 
@@ -45,20 +56,28 @@ while(True):
 	file.seek(0)
 	#rules = {}
 	rules = construct_rules_dict(file)		# parses input text, make a Rule object for each rule, saves objects in dictionary
-	file.close()
-
+	file.seek(0)
 	worlds = construct_worlds(propositions)  #creates a dictionary of worlds
-
+	for w, world in worlds.items():
+		print (world.state)
+	constraints = add_constraints(file)
+	file.close()
+	print ("Constraints:")
+	for c, con in constraints.items():
+		print(con.item)
+	print("After constraints:")
+	worlds = reconstruct_worlds(propositions, constraints)
+	for w, world in worlds.items():
+		print(world.state)
 
 	# Get Z-partition of Rules
 
-	decomposition = z_partition(rules)
+	decomposition = z_partition(rules, constraints)
 
 	#for d, v in decomposition.items():
 	#	print (d)
 	#	for r in v:
 	#		print (r.item)
-
 	for k, rule in rules.items():
 		rule.bodyExtension = assign_extensions(rule.body, worlds, propositions)		#obtains extension of bodies of rules
 		rule.headExtension = assign_extensions(rule.head, worlds, propositions)		#obtains extensions of heads of rules
@@ -66,7 +85,6 @@ while(True):
 	#for r, rule in rules.items():
 	#	print(rule.item, rule.Z)
 	
-
 	for w, world in worlds.items():
 		flag = False
 		highest = -1
@@ -78,10 +96,8 @@ while(True):
 			world.z = 100000
 		else:
 			world.Z = highest +1 
-
 	#for w, world in worlds.items():
 	#	print(world.state, world.Z)
-
 
 	while True:
 		opt = " "
@@ -117,37 +133,21 @@ while(True):
 				try:
 					form = input("Please input a well-formed fomula using '&', '|' and '~' as oprators: \n")
 					_form = prepare_for_SAT(form)
-					z_rank = get_f_Z(_form, decomposition)
+					z_rank = get_f_Z(_form, decomposition, constraints)
 					break
 				except ValueError:
 					print ("That was not a well-formed formula, please try again...")
-			z_rank = get_f_Z(_form, decomposition)
+			z_rank = get_f_Z(_form, decomposition, constraints)
 			print("____________________________________________________________________")
 			print("The Z-rank of %s is %s" % (form, z_rank))
 			print("____________________________________________________________________")
 
 
+
 		if opt == "4":
 			a = input("Please type in the 'a' formula \n")
 			b = input("Please type in the 'b' formula \n")
-			#res = entailment_0(a, b, rules)
-			res = entailment_0Z(a, b, rules)
-			print("\n")
-			if res == True:
-				print("____________________________________________________________________")
-				print("%s p-entails %s " % (a, b))
-				print("____________________________________________________________________")
-
-			else:
-				print("____________________________________________________________________")
-				print("%s does not p-entail %s" % (a, b))
-				print("____________________________________________________________________")
-
-
-		if opt == "5":
-			a = input("Please type in the 'a' formula \n")
-			b = input("Please type in the 'b' formula \n")
-			res = entailment_1(a, b, decomposition)
+			res = entailment_1(a, b, decomposition, constraints)
 			print("\n")
 			if res == True:
 				print("____________________________________________________________________")
@@ -160,6 +160,6 @@ while(True):
 				print("____________________________________________________________________")
 
 
-		if opt == "6":
+		if opt == "5":
 			print("....\n")
 			break

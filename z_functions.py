@@ -356,7 +356,7 @@ def z_partition(rules,constraints):
 	return decomposition
 
 def get_f_Z(formula, decomposition, constraints):
-	Z = len(decomposition) -1
+	Z = len(decomposition) - 1
 	if len(decomposition.keys()) == 0:
 		return 10000
 	#limit = Z 
@@ -375,12 +375,12 @@ def get_f_Z(formula, decomposition, constraints):
 			flag = True
 		else:
 			if flag == False:
-				return 10000
+				return len(decomposition)
 			else:
 				return Z + 1
 		#limit -= 1 
 	if flag == False:
-		return 10000
+		return len(decomposition)
 	return Z + 1
 
 def entailment_0(a, b, rules, constraints):
